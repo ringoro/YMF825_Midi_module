@@ -1,4 +1,4 @@
-#YMF825MIDImodule scketch
+# YMF825MIDImodule scketch
 
 YMF825MIDImodule　のフォルダを作りその中に
 
