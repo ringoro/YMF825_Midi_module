@@ -1,1 +1,1 @@
-# YMF825_Midi_module
+# YMF825 Legacy Midi module
