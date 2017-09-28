@@ -14,11 +14,15 @@ https://www.switch-science.com/catalog/2492/
 起動時にテスト音 ドミソド　が鳴りますのでボリュームにご注意下さい。
 最大16ボイス発音のはず。。。
 
-　　MIDIステータスは KEYON/OFF ベロシティ対応　、PROGCHANGE 
-　　CC 1 Modulation
-　　CC 7 Master Vol.
-　　CC 123 All Note Off
-　　Pichbend 
+MIDIステータスは KEYON/OFF ベロシティ対応　、PROGCHANGE
+
+CC 1 Modulation
+
+CC 7 Master Vol.
+
+CC 123 All Note Off
+
+Pichbend 
 
 対応しました。
 
