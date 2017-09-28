@@ -21,6 +21,10 @@ unsigned char mastervol = (0x33 << 2);
 unsigned char vovol = (0x18 << 2);
 unsigned char chvol = (0x1F << 2);
 
+unsigned char modu = 0x00;
+
+int pbendval = 0x200;
+
 /*
  * F-Numb Table C...B
  */
@@ -123,8 +127,6 @@ unsigned char tone_data[35] ={
     0x80,0x03,0x81,0x80,
   };
 
-
- 
 void set_tone(void){
   
    if_s_write( 0x08, 0xF6 );
@@ -140,13 +142,21 @@ void set_tone(void){
 
 void set_ch(void){
   char  i;
-  for(i=0;i<15;i++){
+  unsigned char frac1,frac2;
+  
+  for(i=0;i<16;i++){
    if_s_write( 0x0B, i );// voice num
    if_s_write( 0x0F, 0x30 );// keyon = 0
    if_s_write( 0x10, chvol);// chvol
    if_s_write( 0x11, 0x00 );// XVB
-   if_s_write( 0x12, 0x08 );// FRAC
+
+//   if_s_write( 0x12, 0x08 );// FRAC
+//   if_s_write( 0x13, 0x00 );// FRAC 
+
+   if_s_write( 0x12, 0x10 );// FRAC
    if_s_write( 0x13, 0x00 );// FRAC 
+
+ 
   }
 }
 
@@ -159,6 +169,7 @@ void keyon(unsigned char fnumh, unsigned char fnuml,unsigned char vn,unsigned ch
    if_s_write( 0x0B, vn );//voice num
 //   if_s_write( 0x0C, 0x54 );//vovol
    if_s_write( 0x0C, vel << 2 );// velocity -> vovol
+   if_s_write( 17, modu ); // modulate
    if_s_write( 0x0D, fnumh );//fnum
    if_s_write( 0x0E, fnuml );//fnum
    if_s_write( 0x0F, 0x40 );//keyon = 1  
@@ -167,6 +178,8 @@ void keyon(unsigned char fnumh, unsigned char fnuml,unsigned char vn,unsigned ch
 void keyoff(unsigned char vn){
    if_s_write( 0x0B, vn );//voice num
    if_s_write( 0x0F, 0x00 );//keyon = 0
+
+   
 }
 void ymf825setup() {
   // put your setup code here, to run once:
@@ -183,5 +196,73 @@ void ymf825setup() {
   set_tone();
   set_ch();
 }
+
+/*
+ *   Add Contorles
+ */
+
+void setmastervol(unsigned char v)
+{
+  v =( v/2 ) << 2;
+  if(v != mastervol){
+    mastervol = v;
+    if_s_write( 0x19,mastervol );//MASTER VOL
+  }
+}
+
+void setmodulate(unsigned char m)
+{
+  int v;
+  m =  m >> 4;
+  if(m == modu)
+  {return;}
+    
+  modu=m;
+  for(v=0;v<16;v++){
+     if_s_write( 0x0B, v );//voice num
+     if_s_write( 17, m );  // modulate
+  }
+  
+}
+
+void alloff()
+{
+  int v;
+  for(v=0;v<16;v++){
+     if_s_write( 0x0B, v );//voice num
+     if_s_write( 15, 0x30 );  // Keyoff,Mute,EG_RST
+  }
+  
+}
+
+/*
+ * Pitch Bend
+ */
+
+void setpbend(int bd)
+{
+   unsigned char frac1,frac2;
+   int v;
+  if(bd==pbendval)
+  {return;}
+
+  pbendval=bd;
+
+  frac2 = (unsigned char)((bd<<2) & 0x00ff);
+  frac1 = (unsigned char)(((bd<<3) & 0xff00)>>8);
+  
+  digitalWrite(7, !digitalRead(7));  
+  for(v=0;v<16;v++){
+     if_s_write( 0x0B, v );//voice num
+     if_s_write( 0x12, frac1 );// FRAC
+     if_s_write( 0x13, frac2 );// FRAC 
+  }
+  
+}
+
+
+
+
+
 
 

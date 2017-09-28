@@ -3,12 +3,17 @@
  * 
  *    Ringoro
  * 
- *    2017/9/18
+ *  2017/9/18
+ *  2017/9/25  
+ *    use case 
+ *    PROGMEM
+ *       9/28
+ *    CC 1,7,123
+ *    P.Bnend
  *
 */
 
 #include <avr/pgmspace.h>
-
 
 unsigned char runsts=0;
 unsigned char byt3flg=0;
@@ -19,11 +24,17 @@ unsigned char laston;
 
 #define KON   0x90
 #define KOFF  0x80
-#define CONT  0xB0
+#define CTRL  0xB0
 #define PRG   0xC0
 #define BEND  0xE0
 #define PRES  0xD0
 #define AFT   0xA0
+
+#define CC_MOD  1
+#define CC_VOL  7
+#define CC_DMP  64
+#define CC_ALLOFF 123
+
 
 extern int fnumtable[12];
 
@@ -37,7 +48,7 @@ void noteon(int nt ,int vn,int vel)
 
     vel = vel  >>2;   // 7bit to 5bit
     n = nt % 12;
-    blk = (unsigned char)(nt / 12) - 1;
+    blk = (unsigned char)(nt / 12) - 1; // fix 9/28
     fn = fnumtable[n];
     fnh =  fn & 0b01111111;
     fnl =  (fn & 0b001110000000) >> 4 | blk;
@@ -98,7 +109,7 @@ void setup() {
 
   ymf825setup();
 
-  Serial.begin(31250);
+  Serial.begin(31500);
   runsts=0;
   byt3flg=0;
   inpt=0;
@@ -117,48 +128,62 @@ bool first=true;
 
 void loop()
 {
+   unsigned char sts,b1,b2;
   if(first){
     testplay();
     first=false;
   }
 
-  
   // MIDI IN Buffer check
   if(inpt == outpt)
      return;
 
-  if(mbuff[outpt] <= 0x7F){
+  sts=mbuff[outpt] & 0xF0;
+  b1=mbuff[(outpt+1)&0xFF];
+  b2=mbuff[(outpt+2)&0xFF];
+
+  if(sts <= 0x7F){
       outpt++;
       return;
   }
-   
-  if((mbuff[outpt]  & 0xF0)==0x90){
-    if(mbuff[(outpt+2)&0xFF] == 0){
-         noteoffsend(mbuff[(outpt+1)&0xFF]);
-         outpt=outpt+3;
-         return;
-    } else { 
-      noteonsend(mbuff[(outpt+1)&0xFF], mbuff[(outpt+2)&0xFF]);
-      outpt = outpt+3;
-      return;
+
+//  each event
+
+  switch(sts){
+    case KON:
+      if(b2==0){
+        noteoffsend(b1);
+      } else {
+        noteonsend(b1,b2);
       }
-    }
-    
-    if((mbuff[outpt]  & 0xF0)==0x80){
-      noteoffsend(mbuff[(outpt+1)&0xFF]);
-      outpt = outpt+3;
-      return;
-    }
+      outpt=outpt+3;
+      break;
 
-    if((mbuff[outpt]  & 0xF0) == 0xC0){
-      progchang(mbuff[(outpt+1)&0xFF]);
-      outpt = outpt+2;
-      return;
-    }
+    case KOFF:
+      noteoffsend(b1);
+      outpt=outpt+3;
+      break;
+      
+    case PRG:
+      progchang(b1);
+      outpt=outpt+2;
+      break;
+      
+    case CTRL:
+      ctrlchange(b1,b2);
+      outpt=outpt+3;
+      break;
+      
+    case BEND:
+      ptchbend(b1,b2);
+      outpt=outpt+3;
+      break;
+      
+   defalut:
+    outpt++;
 
+  }
 
-   // else...
-  outpt++;
 
 }
 
@@ -177,7 +202,6 @@ void serialEvent() {
 
 }
 
-
 /*
  * Test Play
  *  C E G 'C
@@ -187,6 +211,7 @@ char notes[]={60,64,67,72};
 
 void testplay() {
   int i;
+  int d;
 
   for(i=0;i<sizeof(notes);i++){
     noteon(notes[i],0,90);
@@ -203,7 +228,10 @@ void testplay() {
  * 
  */
 
-const  unsigned char  program[4][30]={
+// const  unsigned char   program[4][30]={
+
+ const  unsigned char PROGMEM   program[4][30]={
+
 {
 /*
 Piano-1
@@ -253,21 +281,74 @@ Brass 2
 
 /*
  *   Prog change 
- * 
  */
-
 extern unsigned char tone_data[35];
-
 void progchang(unsigned char p)
 {
   int i;
   p = p & 0x3;
  
   for(i=0;i<30;i++){
-    tone_data[i+1]=program[p][i];
+    tone_data[i+1]=pgm_read_byte_near(&(program[p][0])+i);
+//    tone_data[i+1]=program[p][i];
   }
   set_tone();
   
 }
+
+/*
+ * Control Change
+ */
+void ctrlchange(unsigned char b1,unsigned char b2)
+{
+
+  switch(b1){
+    case CC_VOL:
+      setmastervol(b2);
+      break;
+   case CC_MOD:
+      setmodulate(b2);
+      break;
+
+   case CC_ALLOFF:
+      alloff();
+      break;
+
+   default:
+    break;
+    
+  }
+  
+}
+
+/*
+ * pitch Bend
+ * 
+ *  conver to REG #18,19   256...512...1023
+ *  
+ */
+int ptchbend(unsigned char b1,unsigned char b2)
+{
+  extern int pbendval;
+  long   dlt,bv,bd;
+
+  bv = b2*128 + b1;
+  dlt = bv-8192;
+
+  if (dlt==0){
+    bd = 512;
+    }
+  if (dlt > 0){
+    bd = 512 * (dlt+8192)/8192;
+  }
+
+  if (dlt < 0){
+    dlt = 0 - dlt;
+    bd = 512L * 8192L /(8192+dlt);
+  }
+  setpbend((int)bd);
+  return (int)bd;  
+}
+
 
 
