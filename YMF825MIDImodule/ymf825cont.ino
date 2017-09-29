@@ -150,12 +150,8 @@ void set_ch(void){
    if_s_write( 0x10, chvol);// chvol
    if_s_write( 0x11, 0x00 );// XVB
 
-//   if_s_write( 0x12, 0x08 );// FRAC
-//   if_s_write( 0x13, 0x00 );// FRAC 
-
-   if_s_write( 0x12, 0x10 );// FRAC
+   if_s_write( 0x12, 0x08 );// FRAC
    if_s_write( 0x13, 0x00 );// FRAC 
-
  
   }
 }
@@ -248,8 +244,8 @@ void setpbend(int bd)
 
   pbendval=bd;
 
-  frac2 = (unsigned char)((bd<<2) & 0x00ff);
-  frac1 = (unsigned char)(((bd<<3) & 0xff00)>>8);
+  frac2 = (unsigned char)((bd<<1) & 0x00fe);
+  frac1 = (unsigned char)(((bd<<2) & 0x1f00)>>8);
   
   digitalWrite(7, !digitalRead(7));  
   for(v=0;v<16;v++){
