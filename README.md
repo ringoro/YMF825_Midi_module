@@ -35,7 +35,7 @@ MIDIシールド無しでパソコンのUSB COMポートとしてパソコンか
 
 # debug
 
-2017/10/3 ピッチベンド関数をテーブル方式に変更
+2017/10/3 ピッチベンド関数をテーブル方式に変更 <br>
 参考URL  :  https://github.com/yamaha-webmusic/ymf825board/tree/master/sample2
 
 2017/9/29 ピッチベンド関数修正しました
